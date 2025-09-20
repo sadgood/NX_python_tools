@@ -221,6 +221,7 @@ def try_collect_assembly_components(work_part):
     """收集装配组件并提取几何体"""
     components = []
     all_bodies = []
+    prototype_bodies = []
     
     try:           
         root_comp = work_part.ComponentAssembly.RootComponent
@@ -234,11 +235,13 @@ def try_collect_assembly_components(work_part):
                             proto_bodies = prototype.Bodies
                             if proto_bodies:
                                 for body in proto_bodies:
+                                    prototype_bodies.append(body)
                                     com_body = comp.FindOccurrence(body)
-                                    all_bodies.append(com_body)
+                                    if com_body and hasattr(com_body, "GetFaces"):
+                                        all_bodies.append(com_body)
 
                 except Exception as e:
-                    print("    Prototype 方法失败: %s" % e)
+                    print("Prototype 方法失败: %s" % e)
 
                 try:
                     for child in comp.GetChildren():
@@ -253,14 +256,15 @@ def try_collect_assembly_components(work_part):
             print("[装配信息] 无根组件，不是装配文件")
     except Exception as e:
         print("[装配信息] 装配访问异常: %s" % e)
-    
-    return components, all_bodies
+
+    if not all_bodies:
+        return components, prototype_bodies
+    else:
+        return components, all_bodies
 
 # --------------- 导出函数 ---------------
 def export_stl(session, objects_to_export, out_file, chordal_tol, adjacency_tol):
-    if not objects_to_export:
-        raise RuntimeError("导出对象列表为空")
-    
+   
     print("[导出] 准备导出 %d 个对象到: %s" % (len(objects_to_export), out_file))
     
     # 验证导出对象类型
@@ -276,7 +280,7 @@ def export_stl(session, objects_to_export, out_file, chordal_tol, adjacency_tol)
                 valid_objects.append(obj)
                 print("    ✓ 有效的几何体对象")
             else:
-                print("    ❌ 跳过非几何体对象")
+                print("    X 跳过非几何体对象")
         except Exception as e:
             print("    对象验证异常: %s" % e)
     
@@ -354,7 +358,7 @@ def main():
                 objects_to_export = []
             
                 if  root_comp:
-                    print("[收集] 检查装配组件...")
+                    #print("[收集] 检查装配组件...")
                     components, assembly_bodies = try_collect_assembly_components(work_part)
                     if assembly_bodies:
                         objects_to_export = assembly_bodies
